@@ -10,6 +10,7 @@ export default function SignupPage() {
     name: "",
     email: "",
     password: "",
+    username: "",
     accountType: "creator",
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -18,15 +19,28 @@ export default function SignupPage() {
   const [step, setStep] = useState(1);
   const [user, setuser] = useState("influencer");
   const { login } = useAuth();
+  const [usernameError, setUsernameError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "username") {
+      setUsernameError(validateUsername(value));
+    }
   };
 
   const handleAccountTypeChange = (type: string) => {
     setuser(type);
     setFormData((prev) => ({ ...prev, accountType: type }));
+  };
+
+  const validateUsername = (username: string) => {
+    // Username must be 3-20 chars, start with a letter, only letters, numbers, underscores
+    const regex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
+    if (!regex.test(username)) {
+      return "Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores.";
+    }
+    return "";
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,8 +54,29 @@ export default function SignupPage() {
     setIsLoading(true);
     setError("");
 
+    // Validate username before submitting
+    const usernameValidation = validateUsername(formData.username);
+    if (usernameValidation) {
+      setUsernameError(usernameValidation);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { name, email, password, accountType } = formData;
+      const { name, email, password, accountType, username } = formData;
+      // Check if username already exists in the users table before signup
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+      if (userCheckError) throw userCheckError;
+      if (existingUser) {
+        setError("This username is not available. Please choose another.");
+        setIsLoading(false);
+        return;
+      }
+      // Sign up user with Supabase Auth (handles password securely)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -55,25 +90,34 @@ export default function SignupPage() {
         return;
       }
 
-      console.log("Signup success", data);
-
       if (data.user) {
-        console.log("Inserting user into profiles table:", data.user.id);
-
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert([{ id: data.user.id, accounttype: accountType }]);
-
-        if (profileError) {
-          console.error("Profile insert error:", profileError.message);
-          setError("Error saving profile. Please try again.");
+        // Insert the new user into the users table with all required fields
+        // Use the id and canonical email from Supabase Auth for consistency
+        const { error: userInsertError } = await supabase
+          .from("users")
+          .insert([
+            {
+              id: data.user.id,
+              username: username,
+              email: data.user.email, // Use canonical email from Supabase
+              role: accountType,
+              profile_image: null,
+              bio: null,
+              created_at: new Date().toISOString(),
+              is_online: false,
+              last_seen: new Date().toISOString(),
+            },
+          ]);
+        if (userInsertError) {
+          console.error("User insert error:", userInsertError.message);
+          setError("Error saving user. Please try again.");
           setIsLoading(false);
           return;
         }
       }
 
       setIsLoading(false);
-      navigate(`/BasicDetails/${user}`);
+      navigate(`/BasicDetails/${accountType}`);
     } catch (err) {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -172,6 +216,28 @@ export default function SignupPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {step === 1 ? (
                   <>
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="username"
+                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Username
+                      </label>
+                      {/* User enters username here. Must be unique. */}
+                      <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        value={formData.username}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
+                        placeholder="Choose a unique username"
+                      />
+                      {usernameError && (
+                        <div className="text-xs text-red-500 mt-1">{usernameError}</div>
+                      )}
+                    </div>
                     <div className="space-y-2">
                       <label
                         htmlFor="email"
