@@ -100,7 +100,9 @@ cd frontend
 npm install
 ```
 
+
 3. Create a `.env` file using `.env-example` file:
+
 
 
 4. Get your Supabase credentials:
@@ -122,6 +124,7 @@ cd ../backend
 pip install -r requirements.txt
 ```
 
+
 3. Navigate to the app directory:
 ```sh
 cd app
@@ -130,6 +133,7 @@ cd app
 4. Create a `.env` file using `.env-example` as a reference.
 
 5. Obtain Supabase credentials:
+
    - Go to [Supabase](https://supabase.com/)
    - Log in and create a new project
    - Click on the project and remember the project password
@@ -156,11 +160,13 @@ cd app
       dbname=postgres
      ```
 
+
 6. Get the Groq API key:
    - Visit [Groq Console](https://console.groq.com/)
    - Create an API key and paste it into the `.env` file
 
 #### 4. Start Development Servers
+
 
 1. Start the frontend server (from the frontend directory):
 ```sh
@@ -260,4 +266,6 @@ graph TD;
 
 For queries, issues, or feature requests, please raise an issue or reach out on our Discord server.
 
+
 Happy Coding!
+
